@@ -1,0 +1,29 @@
+{
+  "sourceFile": "Copy of VIR launch - new paid-partnership creators.xlsx",
+  "sheetRows": 279,
+  "matchedProfiles": 276,
+  "missingProfiles": 3,
+  "existingPricingUpdated": 52,
+  "newPricingInserted": 224,
+  "categoryCounts": {
+    "post_rate": 277,
+    "quote_rate": 278,
+    "retweet_rate": 274,
+    "banner_rate": 249,
+    "bio_rate": 225
+  },
+  "missingUsernames": [
+    "biscuitweb3",
+    "adamkpx",
+    "rvcan_kidd"
+  ],
+  "mapping": {
+    "repost": "retweet_rate",
+    "quote": "quote_rate",
+    "post": "source_rows[].parsed_rates.post_rate",
+    "banner": "source_rows[].parsed_rates.banner_rate",
+    "bio": "source_rows[].parsed_rates.bio_rate"
+  },
+  "status": "verified",
+  "verifiedRows": 276
+}

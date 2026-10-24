@@ -1,0 +1,347 @@
+{
+  "sourceFile": "Paid_Partnership_Full_587_Rows.xlsx",
+  "inputRows": 586,
+  "validSourceRows": 585,
+  "uniqueUsernames": 477,
+  "duplicatesConsolidated": 108,
+  "existingPricingToUpdate": 0,
+  "newPricingToInsert": 477,
+  "matchedAuthorProfiles": 420,
+  "missingAuthorProfiles": 57,
+  "missingFromAllCreatorTables": 44,
+  "skipped": [
+    {
+      "sheet": "Creator Partnerships",
+      "row": 47,
+      "values": {
+        "Creator": "Katyayani Shukla",
+        "X Profile": "250",
+        "Retweet Rate": 70,
+        "Comment Rate": 20,
+        "Co-tweet / Quote Rate": 250,
+        "total": 340,
+        "Bundle (All 3)": null
+      },
+      "reason": "Invalid X profile URL"
+    }
+  ],
+  "conflicts": [
+    {
+      "username": "ronycoder",
+      "column": "Co-tweet / Quote Rate",
+      "values": [
+        {
+          "min": 250,
+          "max": 250,
+          "currency": null
+        },
+        {
+          "min": 200,
+          "max": 200,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        54,
+        249,
+        284
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "ronycoder",
+      "column": "total",
+      "values": [
+        {
+          "min": 280,
+          "max": 280,
+          "currency": null
+        },
+        {
+          "min": 230,
+          "max": 230,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        54,
+        249,
+        284
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "heydhavall",
+      "column": "total",
+      "values": [
+        {
+          "min": 200,
+          "max": 200,
+          "currency": null
+        },
+        {
+          "min": 0,
+          "max": 0,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        73,
+        484
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "ecomchasedimond",
+      "column": "Retweet Rate",
+      "values": [
+        {
+          "min": 400,
+          "max": 400,
+          "currency": null
+        },
+        {
+          "min": 20,
+          "max": 20,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        84,
+        85,
+        293
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "ecomchasedimond",
+      "column": "Co-tweet / Quote Rate",
+      "values": [
+        {
+          "min": 750,
+          "max": 750,
+          "currency": null
+        },
+        {
+          "min": 30,
+          "max": 30,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        84,
+        85,
+        293
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "ecomchasedimond",
+      "column": "total",
+      "values": [
+        {
+          "min": 1150,
+          "max": 1150,
+          "currency": null
+        },
+        {
+          "min": 50,
+          "max": 50,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        84,
+        85,
+        293
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "sheldon056",
+      "column": "total",
+      "values": [
+        {
+          "min": 40,
+          "max": 40,
+          "currency": null
+        },
+        {
+          "min": 120,
+          "max": 120,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        91,
+        468
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "heyrobinai",
+      "column": "total",
+      "values": [
+        {
+          "min": 0,
+          "max": 0,
+          "currency": null
+        },
+        {
+          "min": 350,
+          "max": 350,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        108,
+        328
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "ronixtec",
+      "column": "Retweet Rate",
+      "values": [
+        {
+          "min": 60,
+          "max": 60,
+          "currency": null
+        },
+        {
+          "min": 30,
+          "max": 30,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        239,
+        263
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "ronixtec",
+      "column": "total",
+      "values": [
+        {
+          "min": 400,
+          "max": 400,
+          "currency": null
+        },
+        {
+          "min": 30,
+          "max": 30,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        239,
+        263
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    },
+    {
+      "username": "anujcodes_21",
+      "column": "total",
+      "values": [
+        {
+          "min": 70,
+          "max": 70,
+          "currency": null
+        },
+        {
+          "min": 120,
+          "max": 120,
+          "currency": null
+        }
+      ],
+      "source_rows": [
+        315,
+        559
+      ],
+      "resolution": "Retained existing value; otherwise NULL"
+    }
+  ],
+  "issues": [
+    {
+      "username": "saranoor7776",
+      "row": 33,
+      "column": "Retweet Rate",
+      "value": "ACC SUS"
+    },
+    {
+      "username": "saranoor7776",
+      "row": 33,
+      "column": "total",
+      "value": "#VALUE!"
+    },
+    {
+      "username": "ronycoder",
+      "row": 284,
+      "column": "total",
+      "value": "#VALUE!"
+    },
+    {
+      "username": "chrisgpt",
+      "row": 74,
+      "column": "total",
+      "value": "#VALUE!"
+    },
+    {
+      "username": "itsolelehmann",
+      "row": 97,
+      "column": "total",
+      "value": "#VALUE!"
+    }
+  ],
+  "missingUsernames": [
+    "matiasschrank",
+    "lochan_twt",
+    "ridark_eth",
+    "mattnavarra",
+    "polydao",
+    "grebby",
+    "ryoruai",
+    "libertycappy",
+    "aiscwork",
+    "christianpunsog",
+    "ai_jasonyu",
+    "hmmmmmm1458",
+    "yaohui12138",
+    "gosailglobal",
+    "ramztd",
+    "zephyraleigh",
+    "ben_escrito",
+    "vigocreativeai",
+    "valueandtime",
+    "drizzythegoat99",
+    "kobeissiletter",
+    "unusual_whales",
+    "davidonchainx",
+    "runthistown5416",
+    "minchoi",
+    "eli5defi",
+    "aryanlabde",
+    "strength04_x",
+    "nic_detommaso",
+    "mat_sherman",
+    "eng_khairallah1",
+    "hooeem",
+    "iharnoorsingh",
+    "catalinmpit",
+    "kanikabk",
+    "arindam_1729",
+    "heyonuoha",
+    "mentorwebdev",
+    "coreyganim",
+    "robotcleopatra",
+    "adamfrancisco_",
+    "alex2tick",
+    "the_jefferymead",
+    "dineshdsouza"
+  ],
+  "status": "verified",
+  "verifiedRows": 477,
+  "totalPricingRowsAfterImport": 477
+}
