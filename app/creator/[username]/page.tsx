@@ -108,7 +108,18 @@ function ProfileHeader({ author }: { author: Author }) {
           <h2 className="truncate text-xl font-extrabold">{display}</h2>
           {author.verified && <VerifiedBadge className="size-5" />}
         </div>
-        <p className="text-[15px] text-muted">@{author.username}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[15px] text-muted">@{author.username}</p>
+          {p?.canDm === true && (
+            <span title="Direct messages are open" className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
+              <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="3" />
+                <path d="m3 7 9 6 9-6" />
+              </svg>
+              DM open
+            </span>
+          )}
+        </div>
 
         {p?.bio && <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-5">{p.bio}</p>}
 

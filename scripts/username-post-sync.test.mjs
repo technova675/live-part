@@ -87,6 +87,24 @@ test("pagination loads all profiles and queue remains stable after profile chang
   assert.equal(h.reads(), 2);
 });
 
+test("a selected pricing batch uses only its supplied queue and resumes without restarting accounts", async (t) => {
+  const h = await harness(t, { low: [tweet("991")] });
+  const queue = buildUsernameQueue([{ username: "low", followers: 100 }]);
+  const selected = createUsernamePostSync({ ...h.deps, queue });
+  assert.deepEqual((await selected.getState()).map(job => job.username), ["low"]);
+  assert.equal(h.reads(), 0);
+  await selected.step(true);
+  const done = await selected.step(false);
+  assert.equal(done[0].status, "paid");
+  assert.equal(done[0].paidPosts, 1);
+  const resumed = createUsernamePostSync({ ...h.deps, queue });
+  assert.equal((await resumed.step(true))[0].status, "paid");
+  assert.deepEqual(h.starts, ["low"]);
+  assert.equal(h.posts.size, 1);
+  const changed = createUsernamePostSync({ ...h.deps, queue: buildUsernameQueue([{ username: "other" }]) });
+  await assert.rejects(changed.getState(), /Saved sync queue differs/);
+});
+
 test("multiple batches and partial import retries reuse the run without duplicate posts", async (t) => {
   const h = await harness(t, { low: Array.from({ length: 55 }, (_, i) => tweet(String(100 + i))) }, undefined, true);
   await h.sync.step(true);

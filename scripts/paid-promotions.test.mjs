@@ -10,6 +10,17 @@ const row = {
   view_count: 10,
 };
 
+test("synced DM permissions preserve false and unknown rather than inheriting older open DMs", () => {
+  for (const can_dm of [true, false, null, undefined]) {
+    const [author] = mergeCreatorDirectory([], [{ username: 'new_creator', can_dm }], [
+      { ...row, author: { ...row.author, canDm: true } },
+    ]);
+    assert.equal(author.profile.canDm, can_dm ?? null);
+  }
+  assert.equal(authorsFromPromotions([{ ...row, author: { canDm: true } }])[0].profile.canDm, true);
+  assert.equal(authorsFromPromotions([{ ...row, author: {} }])[0].profile.canDm, null);
+});
+
 test("new creators appear without an entry in the old author table", () => {
   const [author] = authorsFromPromotions([row]);
   assert.equal(author.id, "new_creator");

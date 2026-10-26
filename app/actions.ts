@@ -6,4 +6,5 @@ export async function refreshDashboardData() {
   updateTag("authors");
   updateTag("paid-promotion-posts");
   updateTag("creator-pricing");
+  updateTag("creator-outreach");
 }

@@ -2,6 +2,7 @@
 
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { advanceUsernamePostSync, attachUsernamePostSyncRun, getUsernamePostSyncState, retryUsernamePostSync } from "./actions";
+import { advancePricedPostSync, attachPricedPostSyncRun, getPricedPostSyncState, retryPricedPostSync } from "../priced-post-sync/actions";
 import type { UsernamePostJob, UsernamePostSyncState } from "./types";
 
 const complete = new Set(["paid", "not_paid", "unknown", "missing"]);
@@ -11,7 +12,11 @@ const labels: Record<UsernamePostJob["status"], string> = {
   failed: "Failed", start_unknown: "Run ID needed",
 };
 
-export function UsernamePostSyncPanel() {
+export function UsernamePostSyncPanel({ batch = "all" }: { batch?: "all" | "priced" }) {
+  const getState = batch === "priced" ? getPricedPostSyncState : getUsernamePostSyncState;
+  const advance = batch === "priced" ? advancePricedPostSync : advanceUsernamePostSync;
+  const retry = batch === "priced" ? retryPricedPostSync : retryUsernamePostSync;
+  const attach = batch === "priced" ? attachPricedPostSyncRun : attachUsernamePostSyncRun;
   const [state, setState] = useState<UsernamePostSyncState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [autoRun, setAutoRun] = useState(false);
@@ -42,15 +47,15 @@ export function UsernamePostSyncPanel() {
     if (busy || error) return;
     let action: (() => Promise<UsernamePostSyncState>) | undefined;
     let delay = 0;
-    if (!state) action = getUsernamePostSyncState;
-    else if (active && !blocked) { action = () => advanceUsernamePostSync(false); delay = 4000; }
-    else if (autoRun && pending && !blocked && state.configured) action = () => advanceUsernamePostSync(true);
+    if (!state) action = getState;
+    else if (active && !blocked) { action = () => advance(false); delay = 4000; }
+    else if (autoRun && pending && !blocked && state.configured) action = () => advance(true);
     if (!action) return;
     const timer = setTimeout(() => run(action!), delay);
     return () => clearTimeout(timer);
-  }, [state, busy, error, active, blocked, autoRun, pending, run]);
+  }, [state, busy, error, active, blocked, autoRun, pending, run, getState, advance]);
 
-  if (!state) return <div className="mt-8 text-sm text-muted">{error ?? "Loading author profiles…"}{error && <button onClick={() => run(getUsernamePostSyncState)} className="ml-3 text-accent">Retry loading</button>}</div>;
+  if (!state) return <div className="mt-8 text-sm text-muted">{error ?? "Loading author profiles…"}{error && <button onClick={() => run(getState)} className="ml-3 text-accent">Retry loading</button>}</div>;
   const done = jobs.filter((job) => complete.has(job.status)).length;
   const fetched = jobs.reduce((sum, job) => sum + job.fetchedPosts, 0);
   const saved = jobs.reduce((sum, job) => sum + job.paidPosts, 0);
@@ -68,9 +73,9 @@ export function UsernamePostSyncPanel() {
             <p aria-live="polite" className="mt-1 text-sm text-muted">{fetched.toLocaleString()} matching posts fetched · {saved.toLocaleString()} paid posts saved · {profiles.toLocaleString()} profiles updated</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button disabled={!canStart} onClick={() => run(() => advanceUsernamePostSync(true))} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:border-accent disabled:opacity-50">Run next account</button>
+            <button disabled={!canStart} onClick={() => run(() => advance(true))} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:border-accent disabled:opacity-50">Run next account</button>
             <button disabled={!autoActive && !canStart && !active} onClick={() => setAutoRun(!autoActive)} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{autoActive ? "Pause after current" : "Run all remaining"}</button>
-            <button disabled={busy} onClick={() => run(getUsernamePostSyncState)} className="rounded-lg border border-border px-4 py-2 text-sm hover:border-accent disabled:opacity-50">Refresh status</button>
+            <button disabled={busy} onClick={() => run(getState)} className="rounded-lg border border-border px-4 py-2 text-sm hover:border-accent disabled:opacity-50">Refresh status</button>
           </div>
         </div>
         <progress aria-label="Accounts checked" value={done} max={jobs.length || 1} className="mt-4 h-2 w-full accent-[var(--accent)]" />
@@ -79,6 +84,7 @@ export function UsernamePostSyncPanel() {
         <p className="mt-1 text-xs text-muted">Search: from:username since:2026-10-01</p>
         {!state.configured && <p role="alert" className="mt-3 text-sm text-red-400">Apify or database configuration is missing on the server.</p>}
         {blocked && <p role="alert" className="mt-3 text-sm text-amber-400">Sync paused. Resolve the failed account or attach its interrupted run below.</p>}
+        {jobs.length > 0 && done === jobs.length && <p role="status" className="mt-3 text-sm text-emerald-400">Sync complete. All accounts in this batch have been checked.</p>}
         {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
         {!jobs.length && <p className="mt-3 text-sm text-muted">No eligible author profiles found.</p>}
       </section>
@@ -93,8 +99,8 @@ export function UsernamePostSyncPanel() {
               <td className="max-w-sm p-3">
                 <span className={job.status === "paid" ? "text-emerald-400" : ["failed", "start_unknown"].includes(job.status) ? "text-red-400" : job.status === "running" ? "text-accent" : "text-muted"}>{labels[job.status]}</span>
                 {job.error && <p className="mt-1 break-words text-xs text-muted">{job.error}</p>}
-                {job.status === "failed" && <button disabled={busy || active} onClick={() => run(async () => { await retryUsernamePostSync(job.id); return advanceUsernamePostSync(true); })} className="mt-2 text-xs text-accent hover:underline disabled:opacity-50">Retry {job.runId ? "run / import" : "fetch"}</button>}
-                {job.status === "start_unknown" && <RecoverRun disabled={busy} onAttach={(runId) => run(() => attachUsernamePostSyncRun(job.id, runId))} />}
+                {job.status === "failed" && <button disabled={busy || active} onClick={() => run(async () => { await retry(job.id); return advance(true); })} className="mt-2 text-xs text-accent hover:underline disabled:opacity-50">Retry {job.runId ? "run / import" : "fetch"}</button>}
+                {job.status === "start_unknown" && <RecoverRun disabled={busy} onAttach={(runId) => run(() => attach(job.id, runId))} />}
               </td>
               <td className="p-3 tabular-nums">{job.fetchedPosts} / <span className="text-emerald-400">{job.paidPosts}</span></td>
               <td className="p-3">{job.runId ? <a href={`https://console.apify.com/actors/runs/${job.runId}`} target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline">View run ↗</a> : <span className="text-muted">—</span>}</td>

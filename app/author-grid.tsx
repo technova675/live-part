@@ -17,14 +17,17 @@ const SORT_OPTIONS = {
 } as const;
 type SortOrder = keyof typeof SORT_OPTIONS;
 type PricingFilter = "all" | "available" | "unavailable";
+type ContactFilter = "all" | "messaged" | "not_contacted";
 const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 const joined = new Intl.DateTimeFormat("en", { month: "short", year: "numeric", timeZone: "UTC" });
 
-export function AuthorGrid({ authors, pricing }: { authors: Author[]; pricing: CreatorPricingRow[] }) {
+export function AuthorGrid({ authors, pricing, messagedUsernames }: { authors: Author[]; pricing: CreatorPricingRow[]; messagedUsernames: string[] }) {
   const [query, setQuery] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [dmOpenOnly, setDmOpenOnly] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("followers-desc");
   const [pricingFilter, setPricingFilter] = useState<PricingFilter>("all");
+  const [contactFilter, setContactFilter] = useState<ContactFilter>("all");
   const [priceRange, setPriceRange] = useState("all");
   const [exactPrice, setExactPrice] = useState("");
   const [priceError, setPriceError] = useState<string | null>(null);
@@ -33,6 +36,8 @@ export function AuthorGrid({ authors, pricing }: { authors: Author[]; pricing: C
   const deferredQuery = useDeferredValue(query);
   const priced = useMemo(() => new Map(pricing.map((row) => [row.username.toLowerCase(), row])), [pricing]);
   const pricingCount = useMemo(() => authors.filter((author) => priced.has(author.username.toLowerCase())).length, [authors, priced]);
+  const messaged = useMemo(() => new Set(messagedUsernames.map(username => username.toLowerCase())), [messagedUsernames]);
+  const messagedCount = useMemo(() => authors.filter(author => messaged.has(author.username.toLowerCase())).length, [authors, messaged]);
 
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase().replace(/^@/, "");
@@ -40,6 +45,8 @@ export function AuthorGrid({ authors, pricing }: { authors: Author[]; pricing: C
     const matches = authors.filter(
       (a) =>
         (!verifiedOnly || a.verified) &&
+        (!dmOpenOnly || a.profile?.canDm === true) &&
+        (contactFilter === "all" || messaged.has(a.username.toLowerCase()) === (contactFilter === "messaged")) &&
         (pricingFilter === "all" || priced.has(a.username.toLowerCase()) === (pricingFilter === "available")) &&
         (!range || matchesPricingAmount(priced.get(a.username.toLowerCase()), range.min, range.max)) &&
         (exactPrice === "" || matchesPricingAmount(priced.get(a.username.toLowerCase()), Number(exactPrice))) &&
@@ -56,7 +63,7 @@ export function AuthorGrid({ authors, pricing }: { authors: Author[]; pricing: C
       const difference = (aValue ?? 0) - (bValue ?? 0);
       return (ascending ? difference : -difference) || a.id.localeCompare(b.id);
     });
-  }, [authors, deferredQuery, verifiedOnly, sortOrder, pricingFilter, priced, priceRange, exactPrice]);
+  }, [authors, deferredQuery, verifiedOnly, dmOpenOnly, sortOrder, pricingFilter, priced, priceRange, exactPrice, contactFilter, messaged]);
 
   const visible = filtered.slice(0, limit);
 
@@ -99,6 +106,18 @@ export function AuthorGrid({ authors, pricing }: { authors: Author[]; pricing: C
           />
           Verified only
         </label>
+        <label className="flex cursor-pointer select-none items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={dmOpenOnly}
+            onChange={(event) => {
+              setDmOpenOnly(event.target.checked);
+              setLimit(BATCH);
+            }}
+            className="size-4 accent-[var(--accent)]"
+          />
+          DM open only
+        </label>
         <label className="flex items-center gap-2 text-sm">
           <span className="shrink-0">Sort by</span>
           <select
@@ -131,9 +150,26 @@ export function AuthorGrid({ authors, pricing }: { authors: Author[]; pricing: C
             <option value="unavailable">Pricing unavailable ({(authors.length - pricingCount).toLocaleString()})</option>
           </select>
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <span className="shrink-0">Contact status</span>
+          <select
+            aria-label="Filter creators by contact status"
+            value={contactFilter}
+            onChange={(event) => {
+              setContactFilter(event.target.value as ContactFilter);
+              setLimit(BATCH);
+            }}
+            className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm outline-none focus:border-accent sm:flex-none"
+          >
+            <option value="all">All contact statuses</option>
+            <option value="messaged">Already messaged ({messagedCount.toLocaleString()})</option>
+            <option value="not_contacted">Not contacted ({(authors.length - messagedCount).toLocaleString()})</option>
+          </select>
+        </label>
         <p className="text-sm text-muted sm:ml-auto">
           {filtered.length.toLocaleString()} of {authors.length.toLocaleString()} creators
           <span className="block text-xs">{pricingCount.toLocaleString()} with pricing</span>
+          <span className="block text-xs">{messagedCount.toLocaleString()} messaged · {(authors.length - messagedCount).toLocaleString()} not contacted</span>
         </p>
         <div className="flex w-full flex-wrap items-start gap-x-5 gap-y-3 border-t border-border pt-3">
           <label className="flex items-center gap-2 text-sm">
@@ -190,7 +226,7 @@ export function AuthorGrid({ authors, pricing }: { authors: Author[]; pricing: C
           {(priceRange !== "all" || exactPrice !== "") && (
             <button onClick={() => { setPriceRange("all"); setExactPrice(""); setPriceError(null); setLimit(BATCH); }} className="h-10 text-sm text-accent hover:underline">Clear price filter</button>
           )}
-          <p className="w-full text-xs text-muted">Matches any retweet, comment, quote, or bundle price. Bundle ranges match overlapping amounts.</p>
+          <p className="w-full text-xs text-muted">Matches any listed price. Quoted price ranges match overlapping amounts.</p>
         </div>
       </div>
 
@@ -199,7 +235,7 @@ export function AuthorGrid({ authors, pricing }: { authors: Author[]; pricing: C
       ) : (
         <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {visible.map((a, index) => (
-            <AuthorCard key={a.id} author={a} rank={index + 1} pricing={priced.get(a.username.toLowerCase()) ?? null} />
+            <AuthorCard key={a.id} author={a} rank={index + 1} pricing={priced.get(a.username.toLowerCase()) ?? null} messaged={messaged.has(a.username.toLowerCase())} />
           ))}
         </ul>
       )}
@@ -213,7 +249,7 @@ export function AuthorGrid({ authors, pricing }: { authors: Author[]; pricing: C
   );
 }
 
-function AuthorCard({ author, rank, pricing }: { author: Author; rank: number; pricing: CreatorPricing | null }) {
+function AuthorCard({ author, rank, pricing, messaged }: { author: Author; rank: number; pricing: CreatorPricing | null; messaged: boolean }) {
   const display = author.name || author.username;
   const p = author.profile;
   const rates = pricingRates(pricing);
@@ -266,6 +302,17 @@ function AuthorCard({ author, rank, pricing }: { author: Author; rank: number; p
         </div>
       </div>
 
+      {(messaged || rates.length > 0 || p?.canDm === true) && <div className="flex flex-wrap items-center gap-2">
+      {p?.canDm === true && (
+        <span title="Direct messages are open" className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
+          DM open
+        </span>
+      )}
+      {messaged && (
+        <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-1 text-xs font-medium text-sky-300">
+          Messaged
+        </span>
+      )}
       {rates.length > 0 && (
         <Link
           href={`/creator/${author.username}#creator-pricing-heading`}
@@ -274,6 +321,7 @@ function AuthorCard({ author, rank, pricing }: { author: Author; rank: number; p
           Pricing available
         </Link>
       )}
+      </div>}
 
       {p?.bio && <p className="line-clamp-4 text-sm">{p.bio}</p>}
 
@@ -299,7 +347,7 @@ function AuthorCard({ author, rank, pricing }: { author: Author; rank: number; p
       {rates.length > 0 && (
         <dl aria-label="Partnership rates" className="grid grid-cols-2 gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
           {rates.map(({ label, value }) => (
-            <div key={label}>
+            <div key={label} className={label.length > 32 ? "col-span-2" : undefined}>
               <dt className="text-xs text-muted">{label}</dt>
               <dd className="mt-0.5 break-words text-base font-semibold tabular-nums">{value}</dd>
             </div>

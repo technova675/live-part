@@ -7,6 +7,10 @@ export async function supabase(path: string, init: RequestInit = {}): Promise<Re
 
   const res = await fetch(`${url}/rest/v1/${path}`, {
     ...init,
+    // Keep the request lifetime inside its caller's cache scope. An explicit
+    // signal opts out of React's fetch deduplication; use cache dedupes the
+    // completed data functions instead of sharing pending Response bodies.
+    signal: init.signal ?? AbortSignal.timeout(60_000),
     headers: {
       apikey: key,
       Authorization: `Bearer ${key}`,

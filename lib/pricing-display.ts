@@ -20,7 +20,7 @@ export function pricingRates(pricing: CreatorPricing | null) {
     ["Comment", pricing.comment_rate],
     ["Quote", pricing.quote_rate],
   ] as const) {
-    if (value != null) rates.push({ label, value: amount(value) });
+    if (value != null && !((label === "Retweet" || label === "Quote") && pricing.rate_ranges?.some(range => range.kind === (label === "Retweet" ? "retweet" : "quote")))) rates.push({ label, value: amount(value) });
   }
 
   const min = pricing.bundle_rate_min;
@@ -30,6 +30,9 @@ export function pricingRates(pricing: CreatorPricing | null) {
       ? min === max ? amount(min) : `${amount(min)} – ${amount(max)}`
       : min != null ? `From ${amount(min)}` : `Up to ${amount(max!)}`;
     rates.push({ label: "Bundle (all 3)", value });
+  }
+  for (const range of pricing.rate_ranges ?? []) {
+    rates.push({ label: range.label, value: range.min === range.max ? amount(range.min) : `${amount(range.min)} – ${amount(range.max)}` });
   }
   return rates;
 }

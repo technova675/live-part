@@ -20,7 +20,8 @@ export function isWholeDollarInput(value: string) {
 
 export function matchesPricingAmount(pricing: CreatorPricing | undefined, min: number, max = min) {
   if (!pricing) return false;
-  const rates = [pricing.retweet_rate, pricing.comment_rate, pricing.quote_rate];
+  if (pricing.rate_ranges?.some(range => range.min <= max && range.max >= min)) return true;
+  const rates = [pricing.rate_ranges?.some(range => range.kind === "retweet") ? null : pricing.retweet_rate, pricing.comment_rate, pricing.rate_ranges?.some(range => range.kind === "quote") ? null : pricing.quote_rate];
   if (rates.some((rate) => rate != null && rate >= min && rate <= max)) return true;
 
   const low = pricing.bundle_rate_min;

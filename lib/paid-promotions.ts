@@ -10,6 +10,7 @@ export type Profile = {
   tweets: number | null;
   category: string | null;
   joinedAt: string | null;
+  canDm?: boolean | null;
 };
 
 export type Author = {
@@ -52,6 +53,8 @@ type SourceAuthor = {
   following?: number;
   statusesCount?: number;
   createdAt?: string;
+  canDm?: boolean;
+  can_dm?: boolean;
   professional?: { category?: { name?: string }[] };
 };
 
@@ -99,6 +102,7 @@ export function authorsFromPromotions(rows: PromotionAuthorRow[]): Author[] {
             tweets: source.statusesCount ?? null,
             category: source.professional?.category?.[0]?.name ?? null,
             joinedAt: joined && !isNaN(joined.getTime()) ? joined.toISOString() : null,
+            canDm: source.canDm ?? source.can_dm ?? null,
           } : null,
         },
       };
@@ -133,6 +137,7 @@ export type SyncedProfileRow = {
   blue_verified: boolean | null;
   professional_category: string | null;
   account_created_at: string | null;
+  can_dm?: boolean | null;
 };
 
 // Keep the complete directory; only confirmed promotion rows contribute statistics.
@@ -165,6 +170,7 @@ export function mergeCreatorDirectory(
         tweets: profile.tweets,
         category: profile.professional_category,
         joinedAt: profile.account_created_at,
+        canDm: profile.can_dm ?? null,
       } : promotion?.profile ?? null,
     });
   }
@@ -192,6 +198,7 @@ export function mergeCreatorDirectory(
         tweets: profile.tweets,
         category: profile.professional_category,
         joinedAt: profile.account_created_at,
+        canDm: profile.can_dm ?? null,
       },
     });
   }

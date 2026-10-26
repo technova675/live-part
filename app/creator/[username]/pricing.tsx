@@ -10,7 +10,7 @@ export function Pricing({ pricing }: { pricing: CreatorPricing | null }) {
       <h2 id="creator-pricing-heading" className="text-[15px] font-bold">Partnership rates</h2>
       <dl className="mt-3 grid grid-cols-2 gap-3">
         {rates.map(({ label, value }) => (
-          <div key={label} className="rounded-xl border border-border px-3 py-3">
+          <div key={label} className={`rounded-xl border border-border px-3 py-3${label.length > 32 ? " col-span-2" : ""}`}>
             <dt className="text-[13px] text-muted">{label}</dt>
             <dd className="mt-1 break-words text-lg font-bold tabular-nums">{value}</dd>
           </div>

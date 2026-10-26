@@ -48,3 +48,19 @@ next-env.d.ts
 /.tweet-sync/
 /.username-post-sync/
 /quote-recovery/
+/.priced-post-sync/
+
+# DM outreach sender: local-only, never committed or deployed
+/instrumentation.ts
+/app/dm-outreach/
+/app/api/x-auth/
+/lib/dm-messages.ts
+/lib/dm-outreach.ts
+/lib/dm-outreach-rules.ts
+/lib/dm-sender-loop.ts
+/lib/x-api.ts
+/lib/token-crypto.ts
+/scripts/dm-outreach-rules.test.mjs
+/scripts/token-crypto.test.mjs
+/supabase/migrations/20261025_dm_outreach.sql
+/.dm-badge-dev*.log
