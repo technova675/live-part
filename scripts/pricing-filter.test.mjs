@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isWholeDollarInput, matchesPricingAmount, PRICE_RANGES } from "../lib/pricing-filter.ts";
+import { isWholeDollarInput, matchesPricingAmount, MAX_PRICE_STEP, PRICE_BANDS, priceStepBounds, priceStepLabel } from "../lib/pricing-filter.ts";
 
 const empty = { retweet_rate: null, comment_rate: null, quote_rate: null, bundle_rate_min: null, bundle_rate_max: null };
 
@@ -25,7 +25,15 @@ test("requested price brackets include their boundaries and exclude neighboring 
   for (const value of [9, 51]) assert.equal(matchesPricingAmount({ ...empty, quote_rate: value }, 10, 50), false);
   assert.equal(matchesPricingAmount({ ...empty, retweet_rate: 100 }, 101, 200), false);
   assert.equal(matchesPricingAmount({ ...empty, retweet_rate: 101 }, 101, 200), true);
-  assert.ok(PRICE_RANGES.some((range) => range.min === 201 && range.max === 300));
+});
+
+test("price slider stops map to inclusive bounds, with an open-ended top stop", () => {
+  assert.deepEqual(priceStepBounds(0, MAX_PRICE_STEP), { min: 0, max: Number.MAX_SAFE_INTEGER });
+  assert.deepEqual(priceStepBounds(1, 3), { min: 10, max: 50 });
+  assert.equal(priceStepLabel(MAX_PRICE_STEP), "$3,000+");
+  assert.equal(PRICE_BANDS.length, MAX_PRICE_STEP);
+  assert.deepEqual(PRICE_BANDS[0], { min: 0, max: 9 });
+  assert.equal(PRICE_BANDS.at(-1).max, Number.MAX_SAFE_INTEGER);
 });
 
 test("bundle ranges match only overlapping budgets, including open-ended ranges", () => {

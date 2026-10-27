@@ -65,7 +65,7 @@ export async function getAuthors() {
       "paid_authors?select=author_username,author_name,author_followers,author_blue_verified&order=id.asc",
     ),
     fetchAll<SyncedProfileRow>(
-      "author_profiles?select=username,name,bio,avatar_url,banner_url,location,website,followers,following,tweets,blue_verified,can_dm,professional_category,account_created_at&order=username.asc",
+      "author_profiles?select=username,name,bio,avatar_url,banner_url,location,website,followers,following,tweets,blue_verified,can_dm,professional_category,account_created_at,source&order=username.asc",
     ),
     getPromotionAuthorRows(),
   ]);
@@ -91,7 +91,7 @@ async function getAuthorByHandle(handle: string) {
       `paid_authors?select=author_username,author_name,author_followers,author_blue_verified&author_username=ilike.${exactHandle}&order=id.asc`,
     ),
     fetchAll<SyncedProfileRow>(
-      `author_profiles?select=username,name,bio,avatar_url,banner_url,location,website,followers,following,tweets,blue_verified,can_dm,professional_category,account_created_at&username=eq.${encodeURIComponent(handle)}&order=username.asc`,
+      `author_profiles?select=username,name,bio,avatar_url,banner_url,location,website,followers,following,tweets,blue_verified,can_dm,professional_category,account_created_at,source&username=eq.${encodeURIComponent(handle)}&order=username.asc`,
     ),
     fetchAll<PromotionAuthorRow>(
       `paid_promotion_posts?select=author_username,author_name,author_followers,author,view_count&is_paid_promotion=eq.true&author_username=ilike.${exactHandle}&order=posted_at.desc.nullslast,tweet_id.desc`,

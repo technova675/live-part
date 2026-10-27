@@ -5,7 +5,8 @@ import Link from "next/link";
 import type { Author } from "@/lib/authors";
 import type { CreatorPricing, CreatorPricingRow } from "@/lib/creator-pricing";
 import { pricingRates } from "@/lib/pricing-display";
-import { PRICE_RANGES, isWholeDollarInput, matchesPricingAmount } from "@/lib/pricing-filter";
+import { MAX_PRICE_STEP, PRICE_BANDS, isWholeDollarInput, matchesPricingAmount, priceStepBounds } from "@/lib/pricing-filter";
+import { PriceRangeFilter } from "./price-range-filter";
 import { VerifiedBadge } from "./verified-badge";
 
 const BATCH = 60;
@@ -20,6 +21,7 @@ type PricingFilter = "all" | "available" | "unavailable";
 type ContactFilter = "all" | "messaged" | "not_contacted";
 const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 const joined = new Intl.DateTimeFormat("en", { month: "short", year: "numeric", timeZone: "UTC" });
+const sourcesFor = (source: string | null | undefined) => source?.split(",").map((value) => value.trim()).filter(Boolean) ?? [];
 
 export function AuthorGrid({ authors, pricing, messagedUsernames }: { authors: Author[]; pricing: CreatorPricingRow[]; messagedUsernames: string[] }) {
   const [query, setQuery] = useState("");
@@ -28,7 +30,9 @@ export function AuthorGrid({ authors, pricing, messagedUsernames }: { authors: A
   const [sortOrder, setSortOrder] = useState<SortOrder>("followers-desc");
   const [pricingFilter, setPricingFilter] = useState<PricingFilter>("all");
   const [contactFilter, setContactFilter] = useState<ContactFilter>("all");
-  const [priceRange, setPriceRange] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [priceLow, setPriceLow] = useState(0);
+  const [priceHigh, setPriceHigh] = useState(MAX_PRICE_STEP);
   const [exactPrice, setExactPrice] = useState("");
   const [priceError, setPriceError] = useState<string | null>(null);
   const [limit, setLimit] = useState(BATCH);
@@ -38,15 +42,28 @@ export function AuthorGrid({ authors, pricing, messagedUsernames }: { authors: A
   const pricingCount = useMemo(() => authors.filter((author) => priced.has(author.username.toLowerCase())).length, [authors, priced]);
   const messaged = useMemo(() => new Set(messagedUsernames.map(username => username.toLowerCase())), [messagedUsernames]);
   const messagedCount = useMemo(() => authors.filter(author => messaged.has(author.username.toLowerCase())).length, [authors, messaged]);
+  const sourceCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const author of authors) {
+      for (const source of sourcesFor(author.profile?.source)) {
+        counts.set(source, (counts.get(source) ?? 0) + 1);
+      }
+    }
+    return [...counts].sort(([a], [b]) => a.localeCompare(b));
+  }, [authors]);
+  const priceBandCounts = useMemo(() => PRICE_BANDS.map((band) => pricing.filter((row) => matchesPricingAmount(row, band.min, band.max)).length), [pricing]);
+  const priceRangeActive = priceLow > 0 || priceHigh < MAX_PRICE_STEP;
+  const sourcedCount = useMemo(() => authors.filter((author) => sourcesFor(author.profile?.source).length > 0).length, [authors]);
 
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase().replace(/^@/, "");
-    const range = PRICE_RANGES.find((range) => range.value === priceRange);
+    const range = priceRangeActive ? priceStepBounds(priceLow, priceHigh) : null;
     const matches = authors.filter(
       (a) =>
         (!verifiedOnly || a.verified) &&
         (!dmOpenOnly || a.profile?.canDm === true) &&
         (contactFilter === "all" || messaged.has(a.username.toLowerCase()) === (contactFilter === "messaged")) &&
+        (sourceFilter === "all" || (sourceFilter === "none" ? sourcesFor(a.profile?.source).length === 0 : sourcesFor(a.profile?.source).includes(sourceFilter))) &&
         (pricingFilter === "all" || priced.has(a.username.toLowerCase()) === (pricingFilter === "available")) &&
         (!range || matchesPricingAmount(priced.get(a.username.toLowerCase()), range.min, range.max)) &&
         (exactPrice === "" || matchesPricingAmount(priced.get(a.username.toLowerCase()), Number(exactPrice))) &&
@@ -63,7 +80,7 @@ export function AuthorGrid({ authors, pricing, messagedUsernames }: { authors: A
       const difference = (aValue ?? 0) - (bValue ?? 0);
       return (ascending ? difference : -difference) || a.id.localeCompare(b.id);
     });
-  }, [authors, deferredQuery, verifiedOnly, dmOpenOnly, sortOrder, pricingFilter, priced, priceRange, exactPrice, contactFilter, messaged]);
+  }, [authors, deferredQuery, verifiedOnly, dmOpenOnly, sortOrder, pricingFilter, priced, priceRangeActive, priceLow, priceHigh, exactPrice, contactFilter, messaged, sourceFilter]);
 
   const visible = filtered.slice(0, limit);
 
@@ -81,61 +98,58 @@ export function AuthorGrid({ authors, pricing, messagedUsernames }: { authors: A
     return () => observer.disconnect();
   }, [filtered, limit]);
 
+  const filtersActive = verifiedOnly || dmOpenOnly || pricingFilter !== "all" || contactFilter !== "all" || sourceFilter !== "all" || priceRangeActive || exactPrice !== "";
+  const clearPrice = () => { setPriceLow(0); setPriceHigh(MAX_PRICE_STEP); setExactPrice(""); setPriceError(null); setLimit(BATCH); };
+  const clearFilters = () => {
+    setVerifiedOnly(false);
+    setDmOpenOnly(false);
+    setPricingFilter("all");
+    setContactFilter("all");
+    setSourceFilter("all");
+    clearPrice();
+  };
+  const selectClass = "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-accent";
+  const sectionClass = "border-t border-border px-5 py-4";
+  const headingClass = "mb-3 text-xs font-semibold uppercase tracking-wide text-muted";
+
   return (
-    <>
-      <div className="sticky top-0 z-10 -mx-4 mb-6 flex flex-col gap-3 border-b border-border bg-background/90 px-4 py-4 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setLimit(BATCH);
-          }}
-          placeholder="Search name or @handle"
-          className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm outline-none placeholder:text-muted focus:border-accent sm:max-w-sm"
-        />
-        <label className="flex cursor-pointer select-none items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={verifiedOnly}
-            onChange={(e) => {
-              setVerifiedOnly(e.target.checked);
-              setLimit(BATCH);
-            }}
-            className="size-4 accent-[var(--accent)]"
-          />
-          Verified only
-        </label>
-        <label className="flex cursor-pointer select-none items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={dmOpenOnly}
-            onChange={(event) => {
-              setDmOpenOnly(event.target.checked);
-              setLimit(BATCH);
-            }}
-            className="size-4 accent-[var(--accent)]"
-          />
-          DM open only
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <span className="shrink-0">Sort by</span>
-          <select
-            aria-label="Sort creators"
-            value={sortOrder}
-            onChange={(event) => {
-              setSortOrder(event.target.value as SortOrder);
-              setLimit(BATCH);
-            }}
-            className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm outline-none focus:border-accent sm:flex-none"
-          >
-            {Object.entries(SORT_OPTIONS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <span className="shrink-0">Pricing</span>
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      <aside aria-label="Filters" className="w-full shrink-0 rounded-xl border border-border bg-surface lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-72 lg:overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4">
+          <h2 className="text-lg font-bold">Filters</h2>
+          {filtersActive && <button onClick={clearFilters} className="text-sm text-accent hover:underline">Clear all</button>}
+        </div>
+        <div className={sectionClass}>
+          <p className={headingClass}>Show</p>
+          <div className="flex flex-col gap-2.5">
+            <label className="flex cursor-pointer select-none items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={verifiedOnly}
+                onChange={(e) => {
+                  setVerifiedOnly(e.target.checked);
+                  setLimit(BATCH);
+                }}
+                className="size-4 accent-[var(--accent)]"
+              />
+              Verified only
+            </label>
+            <label className="flex cursor-pointer select-none items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={dmOpenOnly}
+                onChange={(event) => {
+                  setDmOpenOnly(event.target.checked);
+                  setLimit(BATCH);
+                }}
+                className="size-4 accent-[var(--accent)]"
+              />
+              DM open only
+            </label>
+          </div>
+        </div>
+        <label className={`block ${sectionClass}`}>
+          <span className={`block ${headingClass}`}>Pricing</span>
           <select
             aria-label="Filter creators by pricing"
             value={pricingFilter}
@@ -143,15 +157,15 @@ export function AuthorGrid({ authors, pricing, messagedUsernames }: { authors: A
               setPricingFilter(event.target.value as PricingFilter);
               setLimit(BATCH);
             }}
-            className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm outline-none focus:border-accent sm:flex-none"
+            className={selectClass}
           >
             <option value="all">All creators</option>
             <option value="available">Pricing available ({pricingCount.toLocaleString()})</option>
             <option value="unavailable">Pricing unavailable ({(authors.length - pricingCount).toLocaleString()})</option>
           </select>
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <span className="shrink-0">Contact status</span>
+        <label className={`block ${sectionClass}`}>
+          <span className={`block ${headingClass}`}>Contact status</span>
           <select
             aria-label="Filter creators by contact status"
             value={contactFilter}
@@ -159,93 +173,133 @@ export function AuthorGrid({ authors, pricing, messagedUsernames }: { authors: A
               setContactFilter(event.target.value as ContactFilter);
               setLimit(BATCH);
             }}
-            className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm outline-none focus:border-accent sm:flex-none"
+            className={selectClass}
           >
             <option value="all">All contact statuses</option>
             <option value="messaged">Already messaged ({messagedCount.toLocaleString()})</option>
             <option value="not_contacted">Not contacted ({(authors.length - messagedCount).toLocaleString()})</option>
           </select>
         </label>
-        <p className="text-sm text-muted sm:ml-auto">
-          {filtered.length.toLocaleString()} of {authors.length.toLocaleString()} creators
-          <span className="block text-xs">{pricingCount.toLocaleString()} with pricing</span>
-          <span className="block text-xs">{messagedCount.toLocaleString()} messaged · {(authors.length - messagedCount).toLocaleString()} not contacted</span>
-        </p>
-        <div className="flex w-full flex-wrap items-start gap-x-5 gap-y-3 border-t border-border pt-3">
-          <label className="flex items-center gap-2 text-sm">
-            <span>Price range</span>
-            <select
-              aria-label="Filter by price range"
-              value={priceRange}
+        <label className={`block ${sectionClass}`}>
+          <span className={`block ${headingClass}`}>Source</span>
+          <select
+            aria-label="Filter creators by source"
+            value={sourceFilter}
+            onChange={(event) => {
+              setSourceFilter(event.target.value);
+              setLimit(BATCH);
+            }}
+            className={selectClass}
+          >
+            <option value="all">All sources</option>
+            {sourceCounts.map(([source, count]) => <option key={source} value={source}>{source} ({count.toLocaleString()})</option>)}
+            <option value="none">No source ({(authors.length - sourcedCount).toLocaleString()})</option>
+          </select>
+        </label>
+        <div className={sectionClass}>
+          <PriceRangeFilter
+            low={priceLow}
+            high={priceHigh}
+            counts={priceBandCounts}
+            onChange={(low, high) => {
+              setPriceLow(low);
+              setPriceHigh(high);
+              setExactPrice("");
+              setPriceError(null);
+              setLimit(BATCH);
+            }}
+          />
+          <label className="mt-4 block text-sm">
+            <span className="mb-1.5 block">Exact price ($)</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              aria-label="Exact price in whole dollars"
+              aria-invalid={priceError != null}
+              aria-describedby={priceError ? "price-input-error" : undefined}
+              value={exactPrice}
+              placeholder="e.g. 10"
               onChange={(event) => {
-                setPriceRange(event.target.value);
-                setExactPrice("");
+                const value = event.target.value;
+                if (!isWholeDollarInput(value)) {
+                  setPriceError("Enter whole dollars only, such as 10. No decimals or symbols.");
+                  return;
+                }
+                setExactPrice(value);
+                setPriceLow(0);
+                setPriceHigh(MAX_PRICE_STEP);
                 setPriceError(null);
                 setLimit(BATCH);
               }}
-              className="h-10 rounded-lg border border-border bg-surface px-3 text-sm outline-none focus:border-accent"
+              onPaste={(event) => {
+                if (!/^[0-9]+$/.test(event.clipboardData.getData("text"))) {
+                  event.preventDefault();
+                  setPriceError("Enter whole dollars only, such as 10. No decimals or symbols.");
+                }
+              }}
+              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none placeholder:text-muted focus:border-accent"
+            />
+          </label>
+          {priceError && <p id="price-input-error" role="alert" className="mt-1 text-xs text-red-400">{priceError}</p>}
+          {(priceRangeActive || exactPrice !== "") && (
+            <button onClick={clearPrice} className="mt-3 text-sm text-accent hover:underline">Clear price filter</button>
+          )}
+          <p className="mt-3 text-xs text-muted">Matches any listed price. Quoted price ranges match overlapping amounts.</p>
+        </div>
+      </aside>
+
+      <section className="min-w-0 flex-1">
+        <div className="sticky top-0 z-10 mb-6 flex flex-col gap-3 border-b border-border bg-background/90 py-4 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setLimit(BATCH);
+            }}
+            placeholder="Search name or @handle"
+            className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm outline-none placeholder:text-muted focus:border-accent sm:max-w-sm"
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <span className="shrink-0">Sort by</span>
+            <select
+              aria-label="Sort creators"
+              value={sortOrder}
+              onChange={(event) => {
+                setSortOrder(event.target.value as SortOrder);
+                setLimit(BATCH);
+              }}
+              className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm outline-none focus:border-accent sm:flex-none"
             >
-              <option value="all">All prices</option>
-              {PRICE_RANGES.map((range) => <option key={range.value} value={range.value}>{range.label}</option>)}
+              {Object.entries(SORT_OPTIONS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </label>
-          <div>
-            <label className="flex items-center gap-2 text-sm">
-              <span>Exact price ($)</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                aria-label="Exact price in whole dollars"
-                aria-invalid={priceError != null}
-                aria-describedby={priceError ? "price-input-error" : undefined}
-                value={exactPrice}
-                placeholder="e.g. 10"
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (!isWholeDollarInput(value)) {
-                    setPriceError("Enter whole dollars only, such as 10. No decimals or symbols.");
-                    return;
-                  }
-                  setExactPrice(value);
-                  setPriceRange("all");
-                  setPriceError(null);
-                  setLimit(BATCH);
-                }}
-                onPaste={(event) => {
-                  if (!/^[0-9]+$/.test(event.clipboardData.getData("text"))) {
-                    event.preventDefault();
-                    setPriceError("Enter whole dollars only, such as 10. No decimals or symbols.");
-                  }
-                }}
-                className="h-10 w-32 rounded-lg border border-border bg-surface px-3 text-sm outline-none placeholder:text-muted focus:border-accent"
-              />
-            </label>
-            {priceError && <p id="price-input-error" role="alert" className="mt-1 text-xs text-red-400">{priceError}</p>}
+          <p className="text-sm text-muted sm:ml-auto sm:text-right">
+            {filtered.length.toLocaleString()} of {authors.length.toLocaleString()} creators
+            <span className="block text-xs">{pricingCount.toLocaleString()} with pricing · {messagedCount.toLocaleString()} messaged · {(authors.length - messagedCount).toLocaleString()} not contacted</span>
+          </p>
+        </div>
+
+        {visible.length === 0 ? (
+          <p className="py-20 text-center text-muted">No creators match your filters.</p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 min-[1700px]:grid-cols-4">
+            {visible.map((a, index) => (
+              <AuthorCard key={a.id} author={a} rank={index + 1} pricing={priced.get(a.username.toLowerCase()) ?? null} messaged={messaged.has(a.username.toLowerCase())} />
+            ))}
+          </ul>
+        )}
+
+        {visible.length > 0 && (
+          <div ref={loadMoreRef} role="status" className="mt-8 py-4 text-center text-sm text-muted">
+            {limit < filtered.length ? "Loading more creators…" : "End of list"}
           </div>
-          {(priceRange !== "all" || exactPrice !== "") && (
-            <button onClick={() => { setPriceRange("all"); setExactPrice(""); setPriceError(null); setLimit(BATCH); }} className="h-10 text-sm text-accent hover:underline">Clear price filter</button>
-          )}
-          <p className="w-full text-xs text-muted">Matches any listed price. Quoted price ranges match overlapping amounts.</p>
-        </div>
-      </div>
-
-      {visible.length === 0 ? (
-        <p className="py-20 text-center text-muted">No creators match your filters.</p>
-      ) : (
-        <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {visible.map((a, index) => (
-            <AuthorCard key={a.id} author={a} rank={index + 1} pricing={priced.get(a.username.toLowerCase()) ?? null} messaged={messaged.has(a.username.toLowerCase())} />
-          ))}
-        </ul>
-      )}
-
-      {visible.length > 0 && (
-        <div ref={loadMoreRef} role="status" className="mt-8 py-4 text-center text-sm text-muted">
-          {limit < filtered.length ? "Loading more creators…" : "End of list"}
-        </div>
-      )}
-    </>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -302,7 +356,12 @@ function AuthorCard({ author, rank, pricing, messaged }: { author: Author; rank:
         </div>
       </div>
 
-      {(messaged || rates.length > 0 || p?.canDm === true) && <div className="flex flex-wrap items-center gap-2">
+      {(messaged || rates.length > 0 || p?.canDm === true || p?.source) && <div className="flex flex-wrap items-center gap-2">
+      {sourcesFor(p?.source).map((source) => (
+        <span key={source} className="rounded-full border border-violet-400/30 bg-violet-400/10 px-2.5 py-1 text-xs font-medium text-violet-300">
+          Source: {source}
+        </span>
+      ))}
       {p?.canDm === true && (
         <span title="Direct messages are open" className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
           DM open
