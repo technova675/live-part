@@ -66,3 +66,4 @@ next-env.d.ts
 /.dm-badge-dev*.log
 /.sept-post-sync/
 /.sept-post-sync-backup-*/
+/lib/sept-post-sync-queue.json

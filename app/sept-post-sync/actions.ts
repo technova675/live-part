@@ -1,9 +1,9 @@
 "use server";
 
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { updateTag } from "next/cache";
 import { createUsernamePostSync } from "@/lib/username-post-sync-engine.mjs";
-import queue from "@/lib/sept-post-sync-queue.json";
 import { startSeptPostScrape, SEPT_SINCE, SEPT_UNTIL } from "@/lib/sept-post-scrape";
 import { getRun, getTweetDatasetItems, getTweetRunInput } from "@/lib/apify";
 import { supabase } from "@/lib/supabase";
@@ -11,6 +11,10 @@ import type { UsernamePostJob, UsernamePostSyncState } from "../username-post-sy
 
 const SINCE = SEPT_SINCE;
 const UNTIL = SEPT_UNTIL;
+
+// Local-only queue file (gitignored); absent in production.
+const queueFile = join(process.cwd(), "lib", "sept-post-sync-queue.json");
+const queue = existsSync(queueFile) ? JSON.parse(readFileSync(queueFile, "utf8")) : [];
 
 const sync = createUsernamePostSync({
   queue, since: SINCE, until: UNTIL, storageDir: join(process.cwd(), ".sept-post-sync"),
