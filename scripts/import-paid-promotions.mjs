@@ -62,7 +62,7 @@ function directRequest(url, init = {}) {
     const body = init.body;
     const headers = { ...init.headers, Connection: "close" };
     if (body != null) headers["Content-Length"] = String(Buffer.byteLength(body));
-    const req = httpsRequest(url, { method: init.method ?? "GET", headers, family: 4, agent: false, timeout: 60000 }, (res) => {
+    const req = httpsRequest(url, { method: init.method ?? "GET", headers, family: 4, agent: false, timeout: 60000, ...(init.lookup ? { lookup: init.lookup } : {}) }, (res) => {
       const chunks = [];
       res.on("data", (chunk) => chunks.push(chunk));
       res.on("error", reject);

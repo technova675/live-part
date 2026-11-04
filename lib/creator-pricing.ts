@@ -11,13 +11,17 @@ export type CreatorPricing = {
   currency: string | null;
   bundle_currency: string | null;
   rate_ranges?: PricingRange[];
+  flexible_pricing?: boolean;
 };
 
 export type CreatorPricingRow = CreatorPricing & { username: string };
 
 function normalizePricing<T extends CreatorPricing>(row: T & { source_rows?: unknown }) {
   const { source_rows, ...pricing } = row;
-  return { ...pricing, rate_ranges: twitterPricingRanges(source_rows) };
+  const flexible_pricing = Array.isArray(source_rows) && source_rows.some(
+    (source) => source?.platform === "twitter" && source?.parsed_rates?.pricing_terms === "flexible",
+  );
+  return { ...pricing, rate_ranges: twitterPricingRanges(source_rows), flexible_pricing };
 }
 
 export async function getCreatorPricingDirectory(): Promise<CreatorPricingRow[]> {

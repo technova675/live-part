@@ -54,14 +54,14 @@ export async function startTweetScrape(tweetId: string): Promise<ApifyRun> {
   return data;
 }
 
-export async function startUsernamePostScrape(username: string): Promise<ApifyRun> {
+export async function startUsernamePostScrape(username: string, since = "2026-10-01", until?: string): Promise<ApifyRun> {
   const handle = username.toLowerCase();
   if (!/^[a-z0-9_]{1,15}$/.test(handle) || ["evrendag1284", "omukare_wanwan"].includes(handle)) {
     throw new Error("Invalid or excluded username");
   }
   const { data } = await apify<{ data: ApifyRun }>("/acts/xquik~x-tweet-scraper/runs", {
     method: "POST",
-    body: JSON.stringify({ ...usernameInput, searchTerms: [`from:${handle} since:2026-10-01`] }),
+    body: JSON.stringify({ ...usernameInput, searchTerms: [`from:${handle} since:${since}${until ? ` until:${until}` : ""}`] }),
   });
   return data;
 }

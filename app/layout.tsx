@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Live Partnership Dashboard",
   description: "Paid partnership activity of X creators",
+  // X's media CDN (pbs/video.twimg.com) rejects requests carrying a foreign Referer.
+  referrer: "same-origin",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

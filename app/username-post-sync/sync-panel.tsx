@@ -3,6 +3,7 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { advanceUsernamePostSync, attachUsernamePostSyncRun, getUsernamePostSyncState, retryUsernamePostSync } from "./actions";
 import { advancePricedPostSync, attachPricedPostSyncRun, getPricedPostSyncState, retryPricedPostSync } from "../priced-post-sync/actions";
+import { advanceSeptPostSync, attachSeptPostSyncRun, getSeptPostSyncState, retrySeptPostSync } from "../sept-post-sync/actions";
 import type { UsernamePostJob, UsernamePostSyncState } from "./types";
 
 const complete = new Set(["paid", "not_paid", "unknown", "missing"]);
@@ -12,11 +13,11 @@ const labels: Record<UsernamePostJob["status"], string> = {
   failed: "Failed", start_unknown: "Run ID needed",
 };
 
-export function UsernamePostSyncPanel({ batch = "all" }: { batch?: "all" | "priced" }) {
-  const getState = batch === "priced" ? getPricedPostSyncState : getUsernamePostSyncState;
-  const advance = batch === "priced" ? advancePricedPostSync : advanceUsernamePostSync;
-  const retry = batch === "priced" ? retryPricedPostSync : retryUsernamePostSync;
-  const attach = batch === "priced" ? attachPricedPostSyncRun : attachUsernamePostSyncRun;
+export function UsernamePostSyncPanel({ batch = "all" }: { batch?: "all" | "priced" | "sept" }) {
+  const getState = batch === "sept" ? getSeptPostSyncState : batch === "priced" ? getPricedPostSyncState : getUsernamePostSyncState;
+  const advance = batch === "sept" ? advanceSeptPostSync : batch === "priced" ? advancePricedPostSync : advanceUsernamePostSync;
+  const retry = batch === "sept" ? retrySeptPostSync : batch === "priced" ? retryPricedPostSync : retryUsernamePostSync;
+  const attach = batch === "sept" ? attachSeptPostSyncRun : batch === "priced" ? attachPricedPostSyncRun : attachUsernamePostSyncRun;
   const [state, setState] = useState<UsernamePostSyncState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [autoRun, setAutoRun] = useState(false);
@@ -81,7 +82,7 @@ export function UsernamePostSyncPanel({ batch = "all" }: { batch?: "all" | "pric
         <progress aria-label="Accounts checked" value={done} max={jobs.length || 1} className="mt-4 h-2 w-full accent-[var(--accent)]" />
         <p className="mt-3 text-xs text-muted">Up to 1,000 tweets per account · $0.00015 per returned tweet, including unpaid tweets, before other Apify charges.</p>
         <p className="mt-1 text-xs text-muted">Keep this page open to continue. Progress and the initial follower order are saved on this server; accounts with unknown follower counts go last.</p>
-        <p className="mt-1 text-xs text-muted">Search: from:username since:2026-10-01</p>
+        <p className="mt-1 text-xs text-muted">Search: {batch === "sept" ? "from:username since:2026-09-01 until:2026-10-01" : "from:username since:2026-10-01"}</p>
         {!state.configured && <p role="alert" className="mt-3 text-sm text-red-400">Apify or database configuration is missing on the server.</p>}
         {blocked && <p role="alert" className="mt-3 text-sm text-amber-400">Sync paused. Resolve the failed account or attach its interrupted run below.</p>}
         {jobs.length > 0 && done === jobs.length && <p role="status" className="mt-3 text-sm text-emerald-400">Sync complete. All accounts in this batch have been checked.</p>}

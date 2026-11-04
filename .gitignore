@@ -64,3 +64,5 @@ next-env.d.ts
 /scripts/token-crypto.test.mjs
 /supabase/migrations/20261025_dm_outreach.sql
 /.dm-badge-dev*.log
+/.sept-post-sync/
+/.sept-post-sync-backup-*/

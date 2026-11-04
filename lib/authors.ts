@@ -19,14 +19,32 @@ async function fetchAll<T>(path: string): Promise<T[]> {
   return rows;
 }
 
-// Pages fetched concurrently once the total is known.
+const PAGE_CONCURRENCY = 4;
+
+// Postgres cancels a busy query with 57014; one retry usually succeeds.
+async function retryOnStatementTimeout(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await supabase(path, init);
+  } catch (error) {
+    if (!String(error).includes("57014")) throw error;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return supabase(path, init);
+  }
+}
+
+// Pages fetched a few at a time once the total is known. Firing every page at
+// once can trip the database statement timeout when Supabase is busy.
 async function fetchAllParallel<T>(path: string): Promise<T[]> {
-  const head = await supabase(path, { method: "HEAD", headers: { Prefer: "count=exact", Range: "0-0" } });
+  const head = await retryOnStatementTimeout(path, { method: "HEAD", headers: { Prefer: "count=exact", Range: "0-0" } });
   const total = Number(head.headers.get("content-range")?.split("/")[1] ?? 0);
-  const pages = await Promise.all(Array.from({ length: Math.ceil(total / PAGE_SIZE) }, async (_, index) => {
-    const from = index * PAGE_SIZE;
-    const res = await supabase(path, { headers: { Range: `${from}-${from + PAGE_SIZE - 1}` } });
-    return res.json() as Promise<T[]>;
+  const pages: T[][] = [];
+  let next = 0;
+  await Promise.all(Array.from({ length: PAGE_CONCURRENCY }, async () => {
+    for (let index = next++; index * PAGE_SIZE < total; index = next++) {
+      const from = index * PAGE_SIZE;
+      const res = await retryOnStatementTimeout(path, { headers: { Range: `${from}-${from + PAGE_SIZE - 1}` } });
+      pages[index] = await res.json();
+    }
   }));
   return pages.flat();
 }

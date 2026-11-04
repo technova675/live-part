@@ -6,7 +6,13 @@ import { AuthorGrid } from "./author-grid";
 import { RefreshData } from "./refresh-data";
 
 export default async function Home() {
-  const [authors, pricing, messagedUsernames] = await Promise.all([getAuthors(), getCreatorPricingDirectory(), getMessagedCreatorUsernames()]);
+  const [directory, pricing, messagedUsernames] = await Promise.all([getAuthors(), getCreatorPricingDirectory(), getMessagedCreatorUsernames()]);
+  // Creators with available pricing must always be listed, even when they have no profile or paid posts yet.
+  const known = new Set(directory.map((author) => author.username.toLowerCase()));
+  const pricingOnly = pricing
+    .filter((row) => !known.has(row.username.toLowerCase()))
+    .map((row) => ({ id: row.username.toLowerCase(), username: row.username, name: null, followers: null, verified: false, paidPosts: 0, medianViews: null, profile: null }));
+  const authors = [...directory, ...pricingOnly];
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-4 py-10 sm:px-6 lg:px-8">
